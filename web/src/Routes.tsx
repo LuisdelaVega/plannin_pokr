@@ -11,7 +11,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
-import { Router, Route, Set } from '@redwoodjs/router'
+import { Router, Route, Set, Private } from '@redwoodjs/router'
 
 import AppLayout from 'src/layouts/AppLayout'
 
@@ -20,7 +20,9 @@ const Routes = () => {
     <Router>
       <Set wrap={AppLayout}>
         <Route path="/" page={HomePage} name="home" />
-        <Route path="/dashboard" page={DashboardPage} name="dashboard" />
+        <Private unauthenticated="home">
+          <Route path="/dashboard" page={DashboardPage} name="dashboard" />
+        </Private>
 
         {/* Authentication */}
         <Route path="/login" page={LoginPage} name="login" />

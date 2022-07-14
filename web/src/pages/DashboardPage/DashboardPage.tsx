@@ -1,8 +1,26 @@
-import { Button, Flex, Heading } from '@chakra-ui/react'
+import { useCallback } from 'react'
+
+import {
+  Box,
+  Button,
+  Collapse,
+  Flex,
+  FormControl,
+  FormErrorMessage,
+  FormLabel,
+  Heading,
+  Input,
+  useDisclosure,
+} from '@chakra-ui/react'
+import {
+  CreateRoomInput,
+  CreateRoomMutation,
+  CreateRoomMutationVariables,
+} from 'types/graphql'
 
 import { useAuth } from '@redwoodjs/auth'
-import { Link, routes } from '@redwoodjs/router'
-import { MetaTags } from '@redwoodjs/web'
+import { useForm } from '@redwoodjs/forms'
+import { MetaTags, useMutation } from '@redwoodjs/web'
 
 const CREATE_ROOM = gql`
   mutation CreateRoomMutation($input: CreateRoomInput!) {
@@ -14,8 +32,38 @@ const CREATE_ROOM = gql`
 
 const DashboardPage = () => {
   const {
-    currentUser: { id },
+    currentUser: { id: userId },
   } = useAuth()
+  const { isOpen, onToggle } = useDisclosure()
+  const {
+    handleSubmit,
+    register,
+    formState: { errors: formErrors, isSubmitting },
+    reset,
+  } = useForm({ mode: 'onBlur' })
+
+  //#region GraphQL Queries & Mutations
+  const [createRoom, { loading: mutationLoading, error: mutationError }] =
+    useMutation<CreateRoomMutation, CreateRoomMutationVariables>(CREATE_ROOM, {
+      onCompleted: ({ createRoom: { id } }) => {
+        reset()
+        // TODO: Navigate to the Room page
+        console.log(id)
+      },
+    })
+  //#endregion
+
+  const onSubmit = useCallback(
+    (input: Pick<CreateRoomInput, 'title'>) => {
+      createRoom({ variables: { input: { userId, ...input } } })
+    },
+    [createRoom, userId]
+  )
+
+  const onToggleCollapse = () => {
+    onToggle()
+    reset()
+  }
 
   return (
     <>
@@ -23,15 +71,44 @@ const DashboardPage = () => {
 
       <Flex gap={8}>
         <Heading as="h1">Your Rooms</Heading>
-        <Button>Create a Room {id}</Button>
+        <Button onClick={onToggleCollapse}>Create a Room</Button>
       </Flex>
-      <p>
-        Find me in <code>./web/src/pages/DashboardPage/DashboardPage.tsx</code>
-      </p>
-      <p>
-        My default route is named <code>dashboard</code>, link to me with `
-        <Link to={routes.dashboard()}>Dashboard</Link>`
-      </p>
+      <Collapse in={isOpen} animateOpacity>
+        {/* TODO: Abstract this into it's own component */}
+        <Box as={'form'} onSubmit={handleSubmit(onSubmit)} my={4}>
+          <Flex alignItems="flex-end" gap={8}>
+            <FormControl
+              isInvalid={formErrors.title || mutationError}
+              flexGrow={3}
+            >
+              <FormLabel htmlFor="title">Room Title</FormLabel>
+              <FormErrorMessage>
+                {formErrors.title && formErrors.title.message}
+              </FormErrorMessage>
+              <Input
+                id="title"
+                placeholder="Awesome Room Name"
+                {...register('title', {
+                  required: 'This is required',
+                  minLength: {
+                    value: 1,
+                    message: 'Minimum length should be 1 character',
+                  },
+                })}
+              />
+            </FormControl>
+            <Button
+              mt={4}
+              colorScheme="teal"
+              isLoading={isSubmitting || mutationLoading}
+              type="submit"
+            >
+              Create
+            </Button>
+          </Flex>
+        </Box>
+      </Collapse>
+      <p>TODO: Here you will see a list of Rooms</p>
     </>
   )
 }
